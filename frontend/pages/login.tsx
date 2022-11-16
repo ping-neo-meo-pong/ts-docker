@@ -21,8 +21,6 @@ export default function Login() {
 
   function onSubmitHandler(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    console.log("hi");
-    console.log(event.currentTarget.username.value);
     // debugger;
     // console.log(event.target);
     axios
@@ -33,12 +31,12 @@ export default function Login() {
       .then(function (response) {
         router.push("/clients");
         user_data._token = response.data.access_token;
+        
         user_data._name = event.currentTarget.username.value;
         user_data._pass = event.currentTarget.password.value;
         console.log(user_data);
       })
       .catch(function (error) {
-        // alert(error);
         console.log(error);
       });
   }

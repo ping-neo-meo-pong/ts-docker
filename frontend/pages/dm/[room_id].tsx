@@ -21,7 +21,7 @@ export default function Dm() {
         console.log("dm: jwt access");
         console.log(router.query.room_id);
         socket.emit("pleaseMakeRoom", router.query.room_id); //user_data._room[i].id);
-        socket.on("roomId", (_roomId) => {
+        socket.on("roomId", (_roomId) => { // 이거 필요있나?
           roomId = _roomId;
         });
         socket.on("server_message", (message) => {
