@@ -19,21 +19,21 @@ export let user_data: any = {
 export default function Login() {
   const router = useRouter();
 
-  function onSubmitHandler(event: React.FormEvent<HTMLFormElement>) {
+  async function onSubmitHandler(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    // debugger;
-    // console.log(event.target);
-    axios
+    console.log("hi");
+    console.log(event.currentTarget.username.value);
+    await axios
       .post("/api/auth/login", {
         username: event.currentTarget.username.value,
         password: event.currentTarget.password.value,
       })
       .then(function (response) {
         router.push("/clients");
-        user_data._token = response.data.access_token;
-        
-        user_data._name = event.currentTarget.username.value;
-        user_data._pass = event.currentTarget.password.value;
+        console.log(response);
+        user_data._token = response.data.accessToken;
+        user_data._name = response.data.userName;
+        // user_data._pass = event.currentTarget.password.value;
         console.log(user_data);
       })
       .catch(function (error) {
@@ -42,18 +42,11 @@ export default function Login() {
   }
   return (
     <div>
-      <form
-        id="username"
-        action="/api/auth/login"
-        method="post"
-        onSubmit={onSubmitHandler}
-      >
-        <input type="text" id="username" name="username" />
-        <br />
-        <input type="text" id="password" name="password" />
+      <form onSubmit={onSubmitHandler}>
+        <input type="text" id="username" name="username" /><br />
+        <input type="text" id="password" name="password" /><br />
         <button type="submit">Login</button>
       </form>
-      {/* <button onClick={onClickHandler}>로그인</button> */}
     </div>
   );
 }
