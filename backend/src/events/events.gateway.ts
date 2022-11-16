@@ -1,29 +1,30 @@
 import {
-  ConnectedSocket,
-  MessageBody,
-  OnGatewayConnection,
-  OnGatewayDisconnect,
-  OnGatewayInit,
-  SubscribeMessage,
-  WebSocketGateway,
-  WebSocketServer,
-  WsResponse,
-  WsException,
+	ConnectedSocket,
+	MessageBody,
+	OnGatewayConnection,
+	OnGatewayDisconnect,
+	OnGatewayInit,
+	SubscribeMessage,
+	WebSocketGateway,
+	WebSocketServer,
+	WsResponse,
+	WsException,
 } from '@nestjs/websockets';
 import { UseGuards } from '@nestjs/common';
-import { from, Observable } from 'rxjs';
+import { from, interval, Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Server, Socket } from 'socket.io';
 import { emit } from 'process';
 import { AuthService } from '../api/auth/auth.service';
 import { DmRoomRepository } from '../core/dm/dm-room.repository';
+import { ScheduleModule } from '@nestjs/schedule';
 
 function wsGuard(socket: any) {
-  if (!socket.hasOwnProperty('user')) {
-    socket.disconnect();
-    throw new WsException('Not authorized');
-	console.log('never');
-  }
+	if (!socket.hasOwnProperty('user')) {
+		socket.disconnect();
+		throw new WsException('Not authorized');
+		console.log('never');
+	}
 }
 
 let loop = null;
@@ -51,102 +52,111 @@ var data = {
 		v_y: 9
 	}
 };
+let clients: Socket[] = [];
+
 
 @WebSocketGateway({ transports: ['websocket'] })
 export class EventsGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
-{
-  @WebSocketServer()
-  server: Server;
+	implements OnGatewayConnection, OnGatewayDisconnect {
+	@WebSocketServer()
+	server: Server;
 
-  constructor(
-    private authService: AuthService,
-    private dmRoomRepository: DmRoomRepository,
-  ) {}
+	constructor(
+		private authService: AuthService,
+		private dmRoomRepository: DmRoomRepository,
+	) { }
 
-  handleConnection(client: Socket) {
-    console.log('connected');
-  }
+	handleConnection(client: Socket) {
+		console.log('connected');
+	}
 
-  handleDisconnect(client: Socket) {
-    console.log('disconnected');
-  }
+	handleDisconnect(client: Socket) {
+		console.log('disconnected');
+	}
 
-  @SubscribeMessage('authorize')
-  async authorize(@ConnectedSocket() socket: any, @MessageBody() jwt: string) {
-    try {
-      socket.user = this.authService.verifyToken(jwt);
-      const dmRooms = await this.dmRoomRepository.getDmRooms(socket.user);
-      for (let dmRoom of dmRooms)
-        socket.join(dmRoom.id);
-    } catch (err) {
-      socket.disconnect();
-    }
-  }
+	@SubscribeMessage('authorize')
+	async authorize(@ConnectedSocket() socket: any, @MessageBody() jwt: string) {
+		try {
+			socket.user = this.authService.verifyToken(jwt);
+			const dmRooms = await this.dmRoomRepository.getDmRooms(socket.user);
+			for (let dmRoom of dmRooms)
+				socket.join(dmRoom.id);
+		} catch (err) {
+			socket.disconnect();
+		}
+	}
 
-  /*
-  @SubscribeMessage('pleaseMakeRoom')
-  makeRoom(@ConnectedSocket() client: Socket, @MessageBody() roomId: string) {
-    client.join(roomId);
-    client.emit('roomId', roomId);
-    console.log(roomId);
-  }
-  */
+	/*
+	@SubscribeMessage('pleaseMakeRoom')
+	makeRoom(@ConnectedSocket() client: Socket, @MessageBody() roomId: string) {
+	  client.join(roomId);
+	  client.emit('roomId', roomId);
+	  console.log(roomId);
+	}
+	*/
 
-  @SubscribeMessage('send_message')
-  send_message(@ConnectedSocket() socket: any, @MessageBody() data: any) {
-    wsGuard(socket);
-    this.server.in(data.roomId).emit(`dmMsgEvent_${data.roomId}`, data.msg);
-  }
+	@SubscribeMessage('send_message')
+	send_message(@ConnectedSocket() socket: any, @MessageBody() data: any) {
+		wsGuard(socket);
+		this.server.in(data.roomId).emit(`dmMsgEvent_${data.roomId}`, data.msg);
+	}
 
-  @SubscribeMessage('id')
-  id_print(@MessageBody('id') data: number) {
-    console.log(data);
-  }
+	@SubscribeMessage('id')
+	id_print(@MessageBody('id') data: number) {
+		console.log(data);
+	}
 
-  // @@@@@@@@@@@@@@@@@@@@@@@     game    @@@@@@@@@@@@@@@@@@@@@@@@
-  @SubscribeMessage('im_gamer')
-  im_gamer(@ConnectedSocket() client: Socket) {
+	// @@@@@@@@@@@@@@@@@@@@@@@     game    @@@@@@@@@@@@@@@@@@@@@@@@
+
+	@SubscribeMessage('im_gamer')
+	im_gamer(@ConnectedSocket() client: Socket) {
+		wsGuard(client);
 		client.on('disconnect', () => {
 			clearInterval(loop);
-			champ--;
+			if (champ > 0)
+				champ--;
 			console.log(`disconnected: ${client.id}`);
 		});
-    if (champ < 2) {
-		  champ++;
-    }
-    console.log("send LR!")
-    client.emit("LR", champ);
+		if (champ < 2) {
+			champ++;
+		}
+		console.log("send LR!")
+		client.emit("LR", champ);
 		if (champ >= 2) {
-      clearInterval(loop);
+			@interval()
+			clearInterval(loop);
 			loop = setInterval(() => {
 				this.server.emit("game_data", data);
-				// console.log(data);
-        console.log(champ);
+				console.log(data);
+				console.log(champ);
+				// for (let i=0; i < 100; i++)
+				// 	console.log(client);
+
 				if (champ >= 2) {
 					ball_engine();
 				}
 			}, 1000 / 30);
 		}
-    else
-      clearInterval(loop);
 	};
-  @SubscribeMessage('p1')
+	@SubscribeMessage('p1')
 	p1(@ConnectedSocket() client: Socket, @MessageBody() m_y: number) {
+		wsGuard(client);
 		// data.mouse_x = m_x;
 		data.p1.mouse_y = m_y;
 	};
-  @SubscribeMessage('p2')
+	@SubscribeMessage('p2')
 	p2(@ConnectedSocket() client: Socket, @MessageBody() m_y: number) {
+		wsGuard(client);
 		// data.mouse_x = m_x;
 		data.p2.mouse_y = m_y;
 	};
-  @SubscribeMessage('gameOut')
-	gameOut() {
-    console.log(champ);
-    clearInterval(loop);
-    if (champ > 0)
-      champ--;
+	@SubscribeMessage('gameOut')
+	gameOut(@ConnectedSocket() client: Socket) {
+		wsGuard(client);
+		clearInterval(loop);
+		if (champ > 0)
+			champ--;
+		console.log(`game out : ${champ}`);
 	};
 }
 

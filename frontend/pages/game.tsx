@@ -61,25 +61,29 @@ export default function GameRoom() {
       champ = _champ;
       console.log(`im ${champ}`);
     })
+    router.events.on('routeChangeStart', () => {
+      socket.emit(`gameOut`);
+    });
     socket.on("game_data", (_data) => {
-      data.p1.mouse_y = _data.p1.mouse_y;
-      data.p2.mouse_y = _data.p2.mouse_y;
-      data.ball.x = _data.ball.x;
-      data.ball.y = _data.ball.y;
-      data.p1.score = _data.p1.score;
-      data.p2.score = _data.p2.score;
+      data = {..._data};
+      // data.p1.mouse_y = _data.p1.mouse_y;
+      // data.p2.mouse_y = _data.p2.mouse_y;
+      // data.ball.x = _data.ball.x;
+      // data.ball.y = _data.ball.y;
+      // data.p1.score = _data.p1.score;
+      // data.p2.score = _data.p2.score;
     })
-    clearInterval(bar_loop);
-    bar_loop = setInterval(() => {
-      if (champ == 1) {
-        console.log(`im ${champ}`);
-        socket.emit("p1", data.p1.mouse_y);
-      }
-      else if (champ == 2) {
-        console.log(`im ${champ}`);
-        socket.emit("p2", data.p2.mouse_y);
-      }
-    }, 1000 / 30);
+    // clearInterval(bar_loop);
+    // bar_loop = setInterval(() => {
+    //   if (champ == 1) {
+    //     console.log(`im ${champ}`);
+    //     socket.emit("p1", data.p1.mouse_y);
+    //   }
+    //   else if (champ == 2) {
+    //     console.log(`im ${champ}`);
+    //     socket.emit("p2", data.p2.mouse_y);
+    //   }
+    // }, 1000 / 30);
   }, []);
 
   let champ: number;
@@ -94,13 +98,24 @@ export default function GameRoom() {
     twinkle(p5);
     draw_p1_bar(p5, data);
     draw_p2_bar(p5, data);
+    
+    // if (champ == 1)
+    //   data.p1.mouse_y = p5.mouseY;
+    // else if (champ == 2)
+    //   data.p2.mouse_y = p5.mouseY;
+    if (champ == 1) {
+      console.log(`im ${champ}`);
+      // data.p1.mouse_y = p5.mouseY;
+      socket.emit("p1", p5.mouseY);
+    }
+    else if (champ == 2) {
+      console.log(`im ${champ}`);
+      // data.p2.mouse_y = p5.mouseY;
+      socket.emit("p2", p5.mouseY);
+    }
 
     if (data.ball.x != 0)
       draw_ball(p5, data);
-    if (champ == 1)
-      data.p1.mouse_y = p5.mouseY;
-    else if (champ == 2)
-      data.p2.mouse_y = p5.mouseY;
   };
   return <Sketch setup={setup} draw={draw} />;
 };
